@@ -1,6 +1,9 @@
 from langchain_openai import ChatOpenAI
 import json
+from pydantic import BaseModel
+from typing import List, Optional
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
 
 model = ChatOpenAI(
     base_url="http://127.0.0.1:1234/v1",
@@ -8,23 +11,22 @@ model = ChatOpenAI(
     api_key = "lm-studio"
 )
 input_paragraph = input("Enter para: ")
-schema = {
-    "movie_title": None,
-    "release_date": None,
-    "release_year": None,
-    "genres": [],
-    "director": [],
-    "writers": [],
-    "cast": [],
-    "original_language": None,
-    "country_of_origin": [],
-    "runtime_minutes": None,
-    "production_companies": [],
-    "plot_summary": None,
-    "themes": [],
-    "additional_details": [],
-    "uncertainties": []
-}
+
+class Movie(BaseModel):
+    title: str
+    release_year: Optional[int]
+    genre: List[str]
+    director: str
+    writers: str
+    cast: str
+    country_of_origin: Optional[str]
+    runtime_minutes: int
+    production_companies: List[str]
+    plot_summary: str
+    additional_details: Optional[str]
+    rating: Optional[float]
+
+parser = PydanticOutputParser(pydantic_object=Movie)
 
 promp = ChatPromptTemplate.from_messages([
     (
@@ -33,22 +35,18 @@ promp = ChatPromptTemplate.from_messages([
         You are a movie information extraction assistant.
 
         Extract movie information from the user's paragraph.
-        Use only information supported by the paragraph.
-        Do not invent missing facts.
-        Return valid JSON matching this schema:
-
-        {schema}
+        {format_instructions}
         """
     ),
     (
         "human",
-        "Analyze this movie paragraph:\n{input_paragraph}"
+        "{input_paragraph}"
     )
 ]) 
 
 prompt = promp.format_messages(
     input_paragraph = input_paragraph,
-    schema = json.dumps(schema, indent=2)
+    format_instructions = parser.get_format_instructions()
 )
 
 response = model.invoke(prompt)
