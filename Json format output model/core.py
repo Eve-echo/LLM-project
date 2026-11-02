@@ -50,4 +50,5 @@ prompt = promp.format_messages(
 )
 
 response = model.invoke(prompt)
-print("Bot:", response.content)
+movie_data = parser.parse(response.content)
+print("Bot:", movie_data)
